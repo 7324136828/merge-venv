@@ -1,9 +1,17 @@
 from unittest import TestCase
+from pathlib import Path
 
-from merge_venv.ui import project_conflict_rows_as_tsv
+from merge_venv.ui import paths_from_drop_data, project_conflict_rows_as_tsv
 
 
 class UiTests(TestCase):
+    def test_parses_multiple_dropped_paths_with_spaces(self):
+        values = ("C:/projects/one", "C:/projects/project two")
+
+        result = paths_from_drop_data("ignored by fake splitter", lambda _data: values)
+
+        self.assertEqual(result, tuple(Path(value).resolve() for value in values))
+
     def test_formats_project_conflicts_as_clipboard_table(self):
         result = project_conflict_rows_as_tsv(
             (
