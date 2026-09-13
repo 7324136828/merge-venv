@@ -15,6 +15,12 @@ Fresh virtual environments keep the pip version bundled with the chosen Python; 
 
 Python 3.10+ is recommended. Tkinter is included with standard Windows and macOS Python installers.
 
+Install the app and its native drag-and-drop support:
+
+```powershell
+python -m pip install -e .
+```
+
 ```powershell
 python run.py
 ```
@@ -25,11 +31,11 @@ or:
 python -m merge_venv
 ```
 
-No third-party runtime packages are required. If the chosen Python version is not already available through one of the source environments, the app installs `uv` into a temporary tooling environment and uses it to provision that Python version. This operation requires internet access.
+If the chosen Python version is not already available through one of the source environments, the app installs `uv` into a temporary tooling environment and uses it to provision that Python version. This operation requires internet access.
 
 ## Use
 
-- Click **Add folders** once for each top-level project folder. Select the parent project folder, not its `.venv`, `venv`, or `env` folder; the app detects the environment inside it automatically.
+- Drag one or more top-level project folders from your file manager onto the folder list, or click **Add folders**. Drop/select the parent project folder, not its `.venv`, `venv`, or `env` folder; the app detects the environment inside it automatically.
 - Click **Scan & merge**.
 - Review the conflict report. The dependency view asks you to choose the version to keep, while the project view lists every selected project and all conflicting dependencies detected in it. Use **Copy table** to copy that report in a spreadsheet-friendly table format. The newest detected version is preselected.
 - Choose a parent directory and a new environment folder name.

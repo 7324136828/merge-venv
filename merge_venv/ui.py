@@ -5,7 +5,9 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Iterable
+from typing import Callable, Iterable
+
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from .merger import EnvironmentMerger, MergeCancelled, MergeError
 from .models import Conflict, EnvironmentSnapshot
@@ -29,6 +31,13 @@ LINE = "#dce2ea"
 PROJECT_REPORT_HEADERS = ("Project folder", "Conflicting dependency", "Detected version")
 
 
+def paths_from_drop_data(
+    data: str, split_list: Callable[[str], tuple[str, ...]]
+) -> tuple[Path, ...]:
+    """Turn TkDND's Tcl list of dropped file names into filesystem paths."""
+    return tuple(Path(value).expanduser().resolve() for value in split_list(data))
+
+
 def project_conflict_rows_as_tsv(rows: Iterable[tuple[str, str, str]]) -> str:
     """Format conflict rows for table-aware clipboard consumers."""
     table = [PROJECT_REPORT_HEADERS, *rows]
@@ -41,7 +50,7 @@ def project_conflict_rows_as_tsv(rows: Iterable[tuple[str, str, str]]) -> str:
     ) + "\r\n"
 
 
-class MergeVenvApp(tk.Tk):
+class MergeVenvApp(TkinterDnD.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Merge Venv")
@@ -110,7 +119,10 @@ class MergeVenvApp(tk.Tk):
 
         ttk.Label(
             panel,
-            text="Choose each top-level project folder. Its virtual environment is detected automatically.",
+            text=(
+                "Drag and drop project folders below, or choose them with Add folders. "
+                "Their virtual environments are detected automatically."
+            ),
             style="Muted.TLabel",
         ).pack(anchor="w", pady=(5, 14))
 
@@ -124,7 +136,7 @@ class MergeVenvApp(tk.Tk):
 
         empty = ttk.Label(
             self.folder_tree,
-            text="No folders added yet",
+            text="Drop project folders here",
             background=PANEL,
             foreground=MUTED,
             font=("Segoe UI", 11),
@@ -139,6 +151,9 @@ class MergeVenvApp(tk.Tk):
             footer, text="Scan & merge  →", style="Accent.TButton", command=self._start_scan
         )
         self.merge_button.pack(side="right")
+        for drop_target in (self.folder_tree, self._empty_label):
+            drop_target.drop_target_register(DND_FILES)
+            drop_target.dnd_bind("<<Drop>>", self._drop_folders)
         self._refresh_folders()
 
     def _add_folders(self) -> None:
@@ -146,15 +161,34 @@ class MergeVenvApp(tk.Tk):
         # the button can be used repeatedly without typing paths.
         folder = filedialog.askdirectory(title="Choose a project folder containing a virtual environment")
         if folder:
-            path = Path(folder).resolve()
+            self._add_folder_paths((Path(folder),))
+
+    def _drop_folders(self, event) -> str:
+        paths = paths_from_drop_data(event.data, self.tk.splitlist)
+        self._add_folder_paths(paths)
+        return event.action
+
+    def _add_folder_paths(self, paths: Iterable[Path]) -> None:
+        errors: list[str] = []
+        added = False
+        for candidate in paths:
+            path = candidate.expanduser().resolve()
             try:
                 find_environment(path)
             except ScanError as exc:
-                messagebox.showerror("Invalid project folder", str(exc), parent=self)
-                return
+                errors.append(f"{path}\n{exc}")
+                continue
             if path not in self._folders:
                 self._folders.append(path)
-                self._refresh_folders()
+                added = True
+        if added:
+            self._refresh_folders()
+        if errors:
+            messagebox.showerror(
+                "Invalid project folder" if len(errors) == 1 else "Some folders were not added",
+                "\n\n".join(errors),
+                parent=self,
+            )
 
     def _remove_selected(self) -> None:
         selected = {int(item) for item in self.folder_tree.selection()}
