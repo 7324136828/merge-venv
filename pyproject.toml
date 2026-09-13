@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "merge-venv"
+version = "0.1.0"
+description = "Merge multiple Python virtual environments through a desktop UI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Merge Venv contributors"}]
+
+[project.gui-scripts]
+merge-venv = "merge_venv.ui:run"
+
+[tool.setuptools.packages.find]
+include = ["merge_venv*"]
